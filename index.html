@@ -1,0 +1,747 @@
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Riverside Nature</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,500&family=Nunito:wght@500;600;700&display=swap">
+<style>
+:root {
+  color-scheme: dark;
+  --wall: #342c2c; --ink: #2c2833; --cream: #fbf3df; --glass: rgba(253, 248, 236, 0.86); --glass-line: rgba(255, 255, 255, 0.55);
+  --muted: #6b6470; --accent: #6fc3b2; --accent-ink: #12302b; --gold: #ffd98a; --chip: rgba(30, 26, 32, 0.62); --chip-line: rgba(255, 240, 210, 0.18);
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; overflow: hidden; background: var(--wall); color: var(--cream); font: 15px/1.45 Nunito, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-tap-highlight-color: transparent; }
+#stage { position: fixed; inset: 0; }
+#stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+
+.title { position: fixed; z-index: 3; pointer-events: none; top: calc(16px + env(safe-area-inset-top, 0px)); left: calc(20px + env(safe-area-inset-left, 0px)); }
+.title h1 { margin: 0; font: 600 26px/1.1 Lora, Georgia, serif; letter-spacing: 0.01em; color: var(--cream); text-shadow: 0 2px 12px rgba(0,0,0,.35); }
+.title p { margin: 4px 0 0; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(251, 243, 223, 0.7); }
+
+.bar {
+  position: fixed; z-index: 4; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  display: flex; gap: 8px; padding: 6px; border-radius: 999px; background: var(--chip); border: 1px solid var(--chip-line);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); max-width: calc(100vw - 24px);
+}
+.bar button {
+  display: inline-flex; align-items: center; gap: 7px; border: 0; border-radius: 999px; padding: 9px 14px; white-space: nowrap;
+  background: transparent; color: var(--cream); font: 700 13.5px/1 Nunito, system-ui, sans-serif; cursor: pointer;
+}
+.bar button:hover { background: rgba(255, 240, 210, 0.1); }
+.bar button.primary, .bar button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.bar button svg { width: 16px; height: 16px; flex: none; }
+.bar button.icon { padding: 9px 11px; }
+.bar .lbl-short { display: none; }
+.bar button.icon svg { width: 19px; height: 19px; }
+.bar button:disabled { opacity: .35; cursor: default; }
+
+.hotspot {
+  position: fixed; z-index: 2; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; border: 0; padding: 0; cursor: pointer;
+  background: radial-gradient(circle, rgba(111,195,178,.95) 0 30%, rgba(111,195,178,.35) 31% 55%, rgba(111,195,178,0) 56%);
+  animation: pulse 2.4s ease-in-out infinite;
+}
+.hotspot::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid rgba(255,255,255,.85); transform: scale(.42); }
+.hotspot:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
+
+.card {
+  position: fixed; z-index: 5; width: min(320px, calc(100vw - 32px)); padding: 16px 18px 16px; border-radius: 16px;
+  background: var(--glass); color: var(--ink); border: 1px solid var(--glass-line); box-shadow: 0 18px 50px rgba(20, 12, 30, 0.35);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); opacity: 0; transform: translateY(6px); transition: opacity .25s, transform .25s; pointer-events: none;
+}
+.card.show { opacity: 1; transform: none; pointer-events: auto; }
+.card h2 { margin: 0 28px 2px 0; font: 600 19px/1.2 Lora, Georgia, serif; }
+.card .sci { margin: 0 0 8px; font: italic 500 13.5px/1.3 Lora, Georgia, serif; color: var(--muted); }
+.card p.body { margin: 0; font-size: 14px; line-height: 1.5; }
+.card .close { position: absolute; top: 10px; right: 10px; width: 28px; height: 28px; border-radius: 50%; border: 0; background: rgba(44, 40, 51, 0.08); color: var(--ink); font-size: 18px; line-height: 1; cursor: pointer; }
+.card .tag { display: inline-block; margin-bottom: 8px; padding: 3px 8px; border-radius: 999px; background: rgba(111,195,178,.22); color: #1f5a50; font: 700 11px/1.2 Nunito, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
+
+.loader { position: fixed; inset: 0; z-index: 9; display: flex; flex-direction: column; gap: 12px; align-items: center; justify-content: center; background: var(--wall); transition: opacity .6s; }
+.loader.done { opacity: 0; pointer-events: none; }
+.loader .ring { width: 54px; height: 54px; border-radius: 50%; border: 3px solid rgba(255, 240, 210, .15); border-top-color: var(--gold); animation: spin 1s linear infinite; }
+.loader p { margin: 0; color: rgba(251, 243, 223, .75); font-size: 14px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.toast { position: fixed; z-index: 6; left: 50%; transform: translateX(-50%); top: calc(70px + env(safe-area-inset-top, 0px)); padding: 8px 14px; border-radius: 999px; background: var(--chip); border: 1px solid var(--chip-line); font-size: 13px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+
+.credits { position: fixed; z-index: 4; left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+.credits > button { border: 0; padding: 6px 10px; border-radius: 999px; background: var(--chip); color: rgba(251, 243, 223, .75); font: 600 11.5px/1 Nunito, system-ui, sans-serif; cursor: pointer; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.credits > button:hover { color: var(--cream); }
+.credits-pop { position: absolute; left: 0; bottom: calc(100% + 8px); width: min(300px, calc(100vw - 32px)); padding: 12px 14px; border-radius: 14px; background: var(--glass); color: var(--ink); border: 1px solid var(--glass-line); box-shadow: 0 14px 40px rgba(20, 12, 30, .35); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); font-size: 12.5px; line-height: 1.45; }
+.credits-pop p { margin: 0 0 6px; } .credits-pop p:last-child { margin: 0; }
+.credits-pop a { color: #1f5a50; }
+@media (max-width: 900px) { .credits { bottom: calc(72px + env(safe-area-inset-bottom, 0px)); } }
+@media (max-width: 640px) {
+  .title h1 { font-size: 21px; }
+  .title p { font-size: 11px; }
+  .bar button { padding: 9px 11px; font-size: 12.5px; }
+  .bar button .lbl-long { display: none; }
+  .bar .lbl-short { display: inline; }
+  .bar { gap: 4px; }
+  .card { left: 16px !important; right: 16px; width: auto; top: auto !important; bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (prefers-reduced-motion: reduce) { .hotspot { animation: none; } }
+</style>
+
+<div id="stage"></div>
+<div class="title"><h1>Riverside Nature</h1><p>A window onto the Lech · Augsburg</p></div>
+<div id="hotspots"></div>
+<div class="card" id="card" role="dialog" aria-live="polite" aria-labelledby="cardTitle">
+  <button class="close" id="cardClose" aria-label="Close">×</button>
+  <span class="tag" id="cardTag">Wildlife</span>
+  <h2 id="cardTitle"></h2>
+  <p class="sci" id="cardSci"></p>
+  <p class="body" id="cardBody"></p>
+</div>
+<div class="bar" id="bar">
+  <button id="lookBtn" class="primary" aria-pressed="false" title="Look around the whole scene">
+    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 3c3.9 0 7 1.3 7 3v4c0 1.5-2.4 2.7-5.6 3l1.1 1.1-1 1L7 12.6l2.5-2.5 1 1-1 1C12 11.8 13.6 11 13.6 10V8.2C12.4 9 10.3 9.5 8 9.5S3.6 9 2.4 8.2V10c0 .7 1 1.4 2.8 1.7l-.3 1.4C2.6 12.6 1 11.5 1 10V6c0-1.7 3.1-3 7-3zm0 1.4C4.7 4.4 2.4 5.3 2.4 6s2.3 1.6 5.6 1.6 5.6-.9 5.6-1.6S11.3 4.4 8 4.4z"/></svg>
+    <span id="lookLbl" class="lbl-long">Panorama</span><span id="lookLblS" class="lbl-short">Pano</span>
+  </button>
+  <button id="soundBtn" aria-pressed="false" title="Birdsong and river sounds">
+    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 6h2.5L8 3v10L4.5 10H2zM10.2 5.2a4 4 0 0 1 0 5.6l-1-1a2.6 2.6 0 0 0 0-3.6zM12.1 3.3a6.7 6.7 0 0 1 0 9.4l-1-1a5.3 5.3 0 0 0 0-7.4z"/></svg>
+    <span id="soundLbl" class="lbl-long">Sound off</span>
+  </button>
+  <button id="zoomOutBtn" class="icon" aria-label="Zoom out – step back from the window" title="Zoom out">
+    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M7 2a5 5 0 0 1 3.9 8.1l3 3-1 1-3-3A5 5 0 1 1 7 2zm0 1.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zM4.8 6.3h4.4v1.4H4.8z"/></svg>
+  </button>
+  <button id="zoomInBtn" class="icon" aria-label="Zoom in – step closer to the window" title="Zoom in">
+    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M7 2a5 5 0 0 1 3.9 8.1l3 3-1 1-3-3A5 5 0 1 1 7 2zm0 1.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zM6.3 4.8h1.4v1.5h1.5v1.4H7.7v1.5H6.3V7.7H4.8V6.3h1.5z"/></svg>
+  </button>
+  <button id="resetBtn" aria-label="Reset view">
+    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 2.5a5.5 5.5 0 1 1-5.2 7.3l1.4-.5A4 4 0 1 0 5.2 5H7v1.5H2.5V2H4v1.9A5.5 5.5 0 0 1 8 2.5z"/></svg>
+    <span class="lbl-long">Reset</span>
+  </button>
+  <button id="xrBtn" hidden>
+    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h9A1.5 1.5 0 0 1 14 4.5v6a1.5 1.5 0 0 1-1.5 1.5h-2.6L8.8 10a1 1 0 0 0-1.6 0L6.1 12H3.5A1.5 1.5 0 0 1 2 10.5v-6zM5 6a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm6 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg>
+    <span id="xrLbl">View in headset</span>
+  </button>
+</div>
+<div class="credits" id="credits" hidden>
+  <button id="creditsBtn" aria-expanded="false" aria-controls="creditsPop">Sound credits</button>
+  <div class="credits-pop" id="creditsPop" hidden>
+    <p><b>Blackbird song</b> — Oona Räisänen, public domain · <a href="https://commons.wikimedia.org/wiki/File:Turdus_merula_2.ogg" target="_blank" rel="noopener">Wikimedia Commons</a></p>
+    <p><b>River</b> — RandomMind, CC0 · <a href="https://opengameart.org/content/sea-and-river-wave-sounds" target="_blank" rel="noopener">OpenGameArt</a></p>
+    <p><b>Weir water</b> — kurt, <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC BY 3.0</a> · <a href="https://opengameart.org/content/stream-sounds" target="_blank" rel="noopener">OpenGameArt</a></p>
+    <p><b>Wind</b> — generated in the browser</p>
+  </div>
+</div>
+<div class="loader" id="loader"><div class="ring"></div><p>Opening the window…</p></div>
+<div class="toast" id="toast" hidden></div>
+
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+const $ = (id) => document.getElementById(id);
+let toastT;
+function toast(m, ms = 2600) { const t = $('toast'); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), ms); }
+
+/* ---------- world scale: the window (radius 1000 design units) is 0.6 m wide in the room ---------- */
+const RW = 0.6;          // window radius in metres
+const DE = 1.3;          // design eye distance: from here every layer lines up exactly with the painting
+const EYE_NEAR = 0.66;   // closest the viewer can step
+let L;                   // layout.json
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.setClearColor(0x342c2c, 1);
+$('stage').appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(40, 1, 0.03, 300);
+const rig = new THREE.Group(); scene.add(rig); rig.add(camera);
+const world = new THREE.Group(); scene.add(world);
+// the painted landscape hangs from a pivot at the viewer's eye, so it can turn behind the fixed window like a panorama
+const pano = new THREE.Group(); pano.position.set(0, 0, DE); world.add(pano);
+const land = new THREE.Group(); land.position.set(0, 0, -DE); pano.add(land);
+
+const maxAniso = renderer.capabilities.getMaxAnisotropy();
+const loadTex = (url) => new Promise((res, rej) => new THREE.TextureLoader().load(url, (t) => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = maxAniso; res(t); }, undefined, rej));
+
+// design point (x right, y down, window radius 1000) at a distance d behind the window
+const K = RW / 1000;
+const sc = (d) => (DE + d) / DE;
+const d2w = (x, y, d) => new THREE.Vector3(x * K * sc(d), -y * K * sc(d), -d);
+// the river surface: inverse distance is linear in screen height (horizon y=70 at 12 m, y=1000 at 1 m)
+const waterDepth = (y) => 1 / (1 / 12 + ((y - 70) / 930) * (1 - 1 / 12));
+
+const anim = [];
+const waterTime = { value: 0 };
+const hotspots = [];
+const objs = {};
+
+function card(name, box, depth, tex, order) {
+  const [x0, y0, x1, y1] = box, s = sc(depth);
+  const m = new THREE.Mesh(new THREE.PlaneGeometry((x1 - x0) * K * s, (y1 - y0) * K * s),
+    new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }));
+  const c = d2w((x0 + x1) / 2, (y0 + y1) / 2, depth);
+  m.position.copy(c); m.userData.base = c.clone(); m.userData.s = s; m.userData.depth = depth;
+  m.renderOrder = 1 + order; land.add(m); objs[name] = m; return m;
+}
+
+/* plants bend with the wind: the top of each layer moves more than its roots */
+function makeSway(m, box, depth, ampDesign, start) {
+  const [x0, y0, x1, y1] = box, s = sc(depth), w = (x1 - x0) * K * s, h = (y1 - y0) * K * s;
+  m.geometry.dispose(); m.geometry = new THREE.PlaneGeometry(w, h, Math.min(220, Math.ceil((x1 - x0) / 35)), 14);
+  const u = { uAmp: { value: ampDesign * K * s }, uStart: { value: start }, uDesignW: { value: x1 - x0 }, uDesignX: { value: x0 } };
+  m.material.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, u, sway);
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nuniform float uTime, uGust, uAmp, uStart, uDesignW, uDesignX;')
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        float hgt = smoothstep(uStart, 1.0, uv.y); hgt *= hgt;
+        float dx = uDesignX + uv.x * uDesignW;                       // design x: neighbours move together
+        float ph = dx / 150.0;
+        float w = sin(uTime * 1.5 + ph) * 0.6 + sin(uTime * 2.6 + ph * 1.9 + 1.7) * 0.25 + sin(uTime * 4.1 + ph * 3.1) * 0.08;
+        transformed.x += (w * (0.35 + uGust) + uGust * 0.7) * uAmp * hgt;
+        transformed.y -= abs(w) * uGust * uAmp * 0.12 * hgt;`);
+  };
+  m.material.needsUpdate = true;
+}
+
+async function build() {
+  L = await (await fetch('layout.json')).json();
+  const names = L.layers.filter((l) => l.kind !== 'water').map((l) => l.name);
+  const extra = ['water', 'frame', 'beak_closed', 'beak_open', 'bee_farwing', 'bee_body', 'bee_nearwing', 'bee_head'];
+  const texList = await Promise.all([...names, ...extra].map((n) => loadTex(`${n}.webp`)));
+  const T = {}; [...names, ...extra].forEach((n, i) => (T[n] = texList[i]));
+
+  for (const l of L.layers) {
+    if (l.kind === 'water') {
+      /* --- the river: one sloped surface, near at the bottom, far at the horizon --- */
+      const [x0, y0, x1, y1] = l.box, NX = 24, NY = 90;
+      const g = new THREE.PlaneGeometry(1, 1, NX, NY); const p = g.attributes.position, uv = g.attributes.uv;
+      for (let i = 0; i < p.count; i++) {
+        const u = uv.getX(i), v = 1 - uv.getY(i);
+        const y = y0 + v * (y1 - y0), x = x0 + u * (x1 - x0), d = waterDepth(y);
+        const w = d2w(x, y, d); p.setXYZ(i, w.x, w.y, w.z);
+      }
+      p.needsUpdate = true; g.computeBoundingSphere();
+      /* the river moves: ripples bend the reflections, light bands drift downstream toward you,
+         sun glitter twinkles, and white water streams away from the weir */
+      const wMat = new THREE.MeshBasicMaterial({ map: T.water, transparent: true, depthWrite: false });
+      wMat.onBeforeCompile = (sh) => {
+        sh.uniforms.uTime = waterTime;
+        sh.fragmentShader = sh.fragmentShader
+          .replace('#include <common>', `#include <common>
+            uniform float uTime;
+            float wHash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }`)
+          .replace('#include <map_fragment>', `
+            vec2 wuv = vMapUv;
+            float ydes = 66.0 + (1.0 - wuv.y) * 2034.0;               // design height (horizon at 70)
+            float xdes = -4500.0 + wuv.x * 9000.0;
+            float invd = 1.0 / 12.0 + (ydes - 70.0) / 930.0 * (11.0 / 12.0);
+            float d = 1.0 / max(invd, 0.075);                           // metres behind the window
+            float wx = xdes * 0.0006 * (1.3 + d) / 1.3;                  // metres across the river
+            // ripples travelling downstream (toward the viewer)
+            float ph1 = d * 38.0 + uTime * 1.9 + sin(wx * 5.0 + uTime * 0.4) * 1.6;
+            float ph2 = d * 23.0 + wx * 9.0 + uTime * 1.3;
+            float r1 = sin(ph1), r2 = sin(ph2);
+            wuv.x += (r1 * 0.55 + r2 * 0.45) * 0.0009 / d;
+            wuv.y += (sin(wx * 14.0 + uTime * 1.2) * 0.6 + r2 * 0.4) * 0.0018 / d;
+            vec4 sampledDiffuseColor = texture2D(map, wuv);
+            diffuseColor *= sampledDiffuseColor;
+            // soft light bands on the wave crests
+            float crest = pow(max(0.0, sin(d * 55.0 + uTime * 2.4 + sin(wx * 11.0) * 1.8)), 14.0);
+            diffuseColor.rgb += vec3(1.0, 0.96, 0.86) * crest * (0.05 + 0.10 / d);
+            // twinkling sun glitter, strongest under the low sun
+            vec2 cell = floor(vec2(wx * 70.0, d * 30.0));
+            float h = wHash(cell);
+            float tw = pow(max(0.0, sin(uTime * 2.6 + h * 60.0)), 24.0);
+            float sunMask = exp(-pow((xdes + 560.0) / 700.0, 2.0)) * 0.9 + 0.12;
+            diffuseColor.rgb += vec3(1.0, 0.93, 0.74) * step(0.9, h) * tw * sunMask * 0.9;
+            // white water fed by the two falls: bright at the plunge, then carried downstream toward you,
+            // fading into the colour of the river
+            float down = ydes - 66.0;
+            float spr = max(down, 0.0);
+            float a1 = 1.0 - smoothstep(66.0 + spr * 0.45, 92.0 + spr * 0.75, abs(xdes - 416.0));
+            float a2 = 1.0 - smoothstep(66.0 + spr * 0.45, 92.0 + spr * 0.75, abs(xdes - 618.0));
+            float across = max(a1, a2);
+            float plunge = exp(-spr / 34.0), trail = exp(-spr / 220.0);
+            float fmask = across * (0.85 * plunge + 0.6 * trail) * smoothstep(-8.0, 2.0, down);
+            float flowLines = pow(0.5 + 0.5 * sin(xdes * 0.27 + sin(d * 2.5 + xdes * 0.013) * 1.6), 3.0);
+            float bubbles = 0.5 + 0.5 * sin(d * 62.0 + uTime * 5.2 + xdes * 0.07);
+            float foamAmt = clamp(fmask * (0.35 + 0.65 * flowLines * bubbles + plunge * 0.8), 0.0, 0.95);
+            vec3 foamCol = mix(vec3(0.97, 0.96, 0.91), vec3(0.85, 0.87, 0.78), 1.0 - plunge);
+            diffuseColor.rgb = mix(diffuseColor.rgb, foamCol, foamAmt);
+          `);
+      };
+      const water = new THREE.Mesh(g, wMat);
+      water.renderOrder = 1 + l.order; land.add(water);
+      anim.push((t) => { waterTime.value = t; });
+      continue;
+    }
+    card(l.name, l.box, l.depth, T[l.name], l.order);
+  }
+
+  /* --- wind: trees, reeds, flowers and grass sway; the gust curve also drives the wind sound --- */
+  const SWAY = { trees: [5, 0.35], reeds_left: [16, 0.05], reeds_right: [18, 0.05], bank_left: [16, 0.2], bank_right: [16, 0.2], meadow: [14, 0.62] };
+  for (const l of L.layers) if (SWAY[l.name]) makeSway(objs[l.name], l.box, l.depth, SWAY[l.name][0], SWAY[l.name][1]);
+  anim.push((t) => { sway.uTime.value = t; sway.uGust.value = gust(t); updateWindSound(t); });
+
+  /* --- the weir's falls: drawn in the same water palette as the river, pouring into it as foam --- */
+  {
+    const fb = [300, -56, 745, 108], fd = L.layers.find((x) => x.name === 'weir').depth, s = sc(fd);
+    const geo = new THREE.PlaneGeometry((fb[2] - fb[0]) * K * s, (fb[3] - fb[1]) * K * s);
+    const mat = new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false,
+      uniforms: { uTime: waterTime },
+      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: `
+        varying vec2 vUv; uniform float uTime;
+        float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+        float vnoise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+          return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }
+        void main(){
+          float xd = ${fb[0].toFixed(1)} + vUv.x * ${(fb[2] - fb[0]).toFixed(1)};
+          float yd = ${fb[3].toFixed(1)} - vUv.y * ${(fb[3] - fb[1]).toFixed(1)};
+          // the two openings between the piers (the piers are painted on top)
+          float in1 = smoothstep(326.0, 334.0, xd) * (1.0 - smoothstep(500.0, 508.0, xd));
+          float in2 = smoothstep(528.0, 536.0, xd) * (1.0 - smoothstep(701.0, 709.0, xd));
+          float inFall = max(in1, in2);
+          float v = clamp((yd + 52.0) / 118.0, 0.0, 1.0);          // 0 at the lip, 1 where it meets the river
+          float n1 = vnoise(vec2(xd * 0.085, v * 5.0 - uTime * 2.4));
+          float n2 = vnoise(vec2(xd * 0.24, v * 13.0 - uTime * 3.6));
+          float n = n1 * 0.62 + n2 * 0.38;
+          vec3 cLip = vec3(0.47, 0.55, 0.44), cSheet = vec3(0.74, 0.78, 0.66), cFoam = vec3(0.97, 0.96, 0.91);
+          vec3 col = mix(cLip, cSheet, smoothstep(0.0, 0.3, v));
+          col = mix(col, cFoam, smoothstep(0.38, 0.78, n) * (0.3 + 0.7 * v));     // white streaks grow as it falls
+          col += vec3(1.0, 0.97, 0.88) * smoothstep(0.07, 0.0, abs(v - 0.06)) * 0.18; // light on the curve of the lip
+          float base = smoothstep(0.62, 1.0, v);
+          col = mix(col, cFoam, base * (0.8 + 0.2 * n));
+          float a = inFall * step(yd, 66.0) * 0.97;
+          // the plunge: bubbling foam spills out over the river surface below the falls
+          float dn = max(yd - 60.0, 0.0);
+          float wide = max(1.0 - smoothstep(70.0 + dn * 1.2, 92.0 + dn * 1.6, abs(xd - 416.0)), 1.0 - smoothstep(70.0 + dn * 1.2, 92.0 + dn * 1.6, abs(xd - 618.0)));
+          float boil = vnoise(vec2(xd * 0.12 + uTime * 0.3, yd * 0.35 - uTime * 1.8)) * 0.6 + vnoise(vec2(xd * 0.3, yd * 0.9 - uTime * 2.6)) * 0.4;
+          float spill = wide * smoothstep(52.0, 62.0, yd) * exp(-dn / 26.0) * smoothstep(0.18, 0.55, boil + 0.35 * exp(-dn / 10.0));
+          col = mix(col, cFoam, step(66.0, yd));
+          a = max(a, spill * 0.95);
+          if (a < 0.003) discard;
+          gl_FragColor = vec4(col, a);
+        }`,
+    });
+    const falls = new THREE.Mesh(geo, mat);
+    falls.position.copy(d2w((fb[0] + fb[2]) / 2, (fb[1] + fb[3]) / 2, fd + 0.002));
+    falls.renderOrder = objs.weir.renderOrder - 0.2; land.add(falls);
+  }
+
+  /* --- rings spreading around the swan --- */
+  const rc = document.createElement('canvas'); rc.width = 256; rc.height = 64; const rx = rc.getContext('2d');
+  rx.strokeStyle = 'rgba(255,250,236,.9)'; rx.lineWidth = 3; rx.beginPath(); rx.ellipse(128, 32, 122, 28, 0, 0, Math.PI * 2); rx.stroke();
+  const ringTex = new THREE.CanvasTexture(rc);
+  const swanL = L.layers.find((x) => x.name === 'swan'); const sy = swanL.box[3] - (swanL.box[3] - swanL.box[1]) * 0.12;
+  const rings = [];
+  for (let i = 0; i < 4; i++) { const m = card('ring' + i, [-130, sy - 18, 130, sy + 18], swanL.depth + 0.01, ringTex, swanL.order - 0.5); m.material.blending = THREE.AdditiveBlending; rings.push(m); }
+  anim.push((t) => { const sw = objs.swan; rings.forEach((m, i) => { const ph = ((t * 0.22 + i / rings.length) % 1); const s = 0.5 + ph * 1.6;
+    m.scale.set(s, s, 1); m.position.x = sw.position.x + 0.004; m.position.y = m.userData.base.y; m.material.opacity = 0.55 * (1 - ph) * Math.min(1, ph * 6); }); });
+
+  /* --- the bee: body, head and two sets of wings that beat from the shoulder --- */
+  {
+    const bee = objs.bee, bl = L.layers.find((x) => x.name === 'bee'), [bx0, by0, bx1, by1] = bl.box;
+    const s = sc(bl.depth), bsc = (bx1 - bx0) / 475;               // design units per source pixel (source crop 170..645 x 120..565)
+    const W = (bx1 - bx0) * K * s, H = (by1 - by0) * K * s;
+    bee.material.map = T.bee_body; bee.material.needsUpdate = true;
+    const part = (tex, order, hinge) => {
+      // the plane is the full bee frame; shift it so the hinge point sits at the mesh origin
+      const g = new THREE.PlaneGeometry(W, H);
+      const hx = ((hinge[0] - 170) / 475 - 0.5) * W, hy = (0.5 - (hinge[1] - 120) / 445) * H;
+      g.translate(-hx, -hy, 0);
+      const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }));
+      m.position.set(hx, hy, 0.0005 * order); m.renderOrder = bee.renderOrder + order * 0.05; bee.add(m); return m;
+    };
+    const far = part(T.bee_farwing, -1, [405, 335]), near = part(T.bee_nearwing, 1, [400, 318]);
+    part(T.bee_head, 2, [300, 350]);
+    // a faint second image of each wing at the other end of its stroke reads as motion blur
+    const farB = part(T.bee_farwing, -1.1, [405, 335]), nearB = part(T.bee_nearwing, 0.9, [400, 318]);
+    farB.material.opacity = nearB.material.opacity = 0.32;
+    anim.push((t) => {
+      const ph = t * Math.PI * 2 * 22;                               // ~22 beats a second (as fast as the frame rate allows)
+      const a = Math.sin(ph), b = Math.sin(ph + Math.PI);
+      near.rotation.z = -0.15 + a * 0.38; near.scale.y = 0.78 + 0.22 * Math.abs(Math.cos(ph));
+      far.rotation.z = -0.1 + a * 0.32; far.scale.y = 0.8 + 0.2 * Math.abs(Math.cos(ph));
+      nearB.rotation.z = -0.15 + b * 0.38; farB.rotation.z = -0.1 + b * 0.32;
+      near.material.opacity = 0.82 + 0.15 * Math.abs(a); far.material.opacity = 0.78 + 0.15 * Math.abs(a);
+    });
+  }
+
+  /* --- gentle life --- */
+  anim.push((t) => { const m = objs.swan, b = m.userData.base, s = m.userData.s; m.position.set(b.x + Math.sin(t * 0.22) * 0.02 * s, b.y + Math.sin(t * 1.3) * 0.0025 * s, b.z); });
+  anim.push((t) => { const m = objs.bee, b = m.userData.base, s = m.userData.s; m.position.set(b.x + Math.sin(t * 0.9) * 0.014 * s, b.y + Math.sin(t * 1.8) * 0.009 * s, b.z + Math.sin(t * 0.6) * 0.05); m.rotation.z = Math.sin(t * 3.1) * 0.06; });
+  anim.push((t) => { const m = objs.blackbird, b = m.userData.base; m.scale.setScalar(1 + Math.sin(t * 2.2) * 0.006); m.position.y = b.y + Math.sin(t * 2.2) * 0.0015; });
+  objs.notes.visible = false;
+
+  /* --- the blackbird sings every so often: beak opens, song arcs and notes spread out --- */
+  const bbL = L.layers.find((x) => x.name === 'blackbird');
+  const beakC = card('beak_closed', bbL.box, bbL.depth, T.beak_closed, bbL.order - 0.1);
+  const beakO = card('beak_open', bbL.box, bbL.depth, T.beak_open, bbL.order - 0.1); beakO.visible = false;
+  const bsc = (bbL.box[2] - bbL.box[0]) / 655;                        // design units per source pixel
+  const tip = [bbL.box[0] + (238 - 210) * bsc, bbL.box[1] + (330 - 245) * bsc];
+  const arcTex = (() => { const c = document.createElement('canvas'); c.width = 128; c.height = 256; const x = c.getContext('2d');
+    x.shadowColor = 'rgba(255,214,120,.9)'; x.shadowBlur = 10; x.strokeStyle = 'rgba(255,246,214,.95)'; x.lineWidth = 7; x.lineCap = 'round';
+    x.beginPath(); x.arc(118, 128, 100, Math.PI * 0.72, Math.PI * 1.28); x.stroke(); return new THREE.CanvasTexture(c); })();
+  const noteTex = [0, 1].map((k) => { const c = document.createElement('canvas'); c.width = c.height = 96; const x = c.getContext('2d');
+    x.fillStyle = '#fff6dc'; x.strokeStyle = '#fff6dc'; x.shadowColor = 'rgba(255,200,90,.9)'; x.shadowBlur = 8; x.lineWidth = 6;
+    const head = (hx, hy) => { x.beginPath(); x.ellipse(hx, hy, 13, 9.5, -0.45, 0, Math.PI * 2); x.fill(); x.beginPath(); x.moveTo(hx + 11, hy - 3); x.lineTo(hx + 11, hy - 50); x.stroke(); };
+    if (k === 0) { head(36, 74); x.beginPath(); x.moveTo(47, 24); x.quadraticCurveTo(70, 34, 66, 56); x.stroke(); }
+    else { head(26, 76); head(64, 68); x.lineWidth = 9; x.beginPath(); x.moveTo(37, 26); x.lineTo(75, 18); x.stroke(); }
+    return new THREE.CanvasTexture(c); });
+  const songFx = [];
+  const spawnArc = (delay) => { const m = card('arc', [tip[0] - 34, tip[1] - 70, tip[0] + 0, tip[1] + 70], bbL.depth + 0.002, arcTex, bbL.order + 0.2); m.material.blending = THREE.AdditiveBlending; m.material.opacity = 0; songFx.push({ m, kind: 'arc', t0: performance.now() / 1000 + delay, life: 2.0 }); };
+  const spawnNote = (delay) => { const m = card('note', [tip[0] - 60, tip[1] - 60, tip[0] - 0, tip[1] + 0], bbL.depth + 0.002, noteTex[Math.random() < 0.5 ? 0 : 1], bbL.order + 0.2); m.material.opacity = 0; songFx.push({ m, kind: 'note', t0: performance.now() / 1000 + delay, life: 2.6, dx: -(0.05 + Math.random() * 0.05), dy: 0.03 + Math.random() * 0.04, rot: (Math.random() - 0.5) * 0.6 }); };
+  // recorded blackbird phrases; each note is [start, length] in seconds, measured from the recording,
+  // so the beak opens exactly while the real bird is singing
+  const SONG = await (await fetch('audio/blackbird.json')).json();
+  let songUntil = 0, phrase = null, songStart = 0, nextSong = performance.now() / 1000 + 3.5, lastIdx = -1;
+  function sing() {
+    let i = Math.floor(Math.random() * SONG.length); if (i === lastIdx) i = (i + 1) % SONG.length; lastIdx = i;
+    const now = performance.now() / 1000, rec = SONG[i]; phrase = rec.notes; songStart = now;
+    const end = phrase[phrase.length - 1]; songUntil = now + end[0] + end[1];
+    let k = 0; phrase.forEach(([st, ln]) => { if (ln >= 0.07) { spawnArc(st); if (k++ % 2 === 0) spawnNote(st + 0.05); } });
+    if (audio.on) playBird(i);
+    nextSong = songUntil + 7 + Math.random() * 6;
+  }
+  anim.push(() => {
+    const now = performance.now() / 1000;
+    if (now > nextSong && !document.hidden) sing();
+    let open = false;
+    if (phrase && now < songUntil + 0.05) { const e = now - songStart; open = phrase.some(([st, ln]) => e >= st && e <= st + ln); }
+    beakO.visible = open; beakC.visible = !open;
+    // keep the beak glued to the breathing bird
+    beakO.position.copy(objs.blackbird.position); beakC.position.copy(objs.blackbird.position); beakO.scale.copy(objs.blackbird.scale); beakC.scale.copy(objs.blackbird.scale);
+    for (let i = songFx.length - 1; i >= 0; i--) {
+      const f = songFx[i], k = (now - f.t0) / f.life, b = f.m.userData.base;
+      if (k < 0) continue;
+      if (k >= 1) { land.remove(f.m); f.m.geometry.dispose(); f.m.material.dispose(); songFx.splice(i, 1); continue; }
+      if (f.kind === 'arc') { const sc2 = 0.6 + k * 3.2; f.m.scale.set(sc2, sc2, 1); f.m.position.set(b.x - k * 0.09, b.y + k * 0.01, b.z); f.m.material.opacity = Math.min(1, k * 8) * Math.pow(1 - k, 1.4); }
+      else { f.m.position.set(b.x + f.dx * k * 1.6, b.y + f.dy * k * 1.6 + Math.sin(k * 9) * 0.004, b.z); f.m.rotation.z = f.rot * k; f.m.material.opacity = Math.min(1, k * 6) * (1 - k * k); }
+    }
+  });
+  objs.blackbird.userData.sing = sing;
+  anim.push((t) => { const m = objs.branch, b = m.userData.base, g = gust(t); m.rotation.z = Math.sin(t * 0.9) * (0.002 + g * 0.004); m.position.y = b.y + Math.sin(t * 0.9) * (0.0006 + g * 0.0012); });
+
+  /* --- drifting golden sparkles at many depths --- */
+  const N = 170, sp = new Float32Array(N * 3), seed = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    const d = 0.4 + Math.pow(Math.random(), 1.6) * 9, a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * 1.6;
+    const p = d2w(Math.cos(a) * r * 1000, Math.sin(a) * r * 700 - 150, d); sp.set([p.x, p.y, p.z], i * 3); seed[i] = Math.random() * 100;
+  }
+  const spGeo = new THREE.BufferGeometry(); spGeo.setAttribute('position', new THREE.BufferAttribute(sp.slice(), 3));
+  const dot = document.createElement('canvas'); dot.width = dot.height = 64; const dg = dot.getContext('2d');
+  const grad = dg.createRadialGradient(32, 32, 0, 32, 32, 32); grad.addColorStop(0, 'rgba(255,246,214,1)'); grad.addColorStop(0.25, 'rgba(255,217,138,.85)'); grad.addColorStop(1, 'rgba(255,217,138,0)');
+  dg.fillStyle = grad; dg.fillRect(0, 0, 64, 64);
+  const spMat = new THREE.PointsMaterial({ size: 0.02, map: new THREE.CanvasTexture(dot), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true });
+  const sparkles = new THREE.Points(spGeo, spMat); sparkles.renderOrder = 30; land.add(sparkles);
+  anim.push((t) => { const a = spGeo.attributes.position; for (let i = 0; i < N; i++) { const s0 = seed[i]; a.setXYZ(i, sp[i * 3] + Math.sin(t * 0.3 + s0) * 0.02, sp[i * 3 + 1] + Math.sin(t * 0.45 + s0 * 1.3) * 0.02, sp[i * 3 + 2]); } a.needsUpdate = true; spMat.opacity = 0.7 + 0.2 * Math.sin(t * 0.7); });
+
+  /* --- the stone wall with the round opening (window plane, z = 0) --- */
+  const [fx0, fy0, fx1, fy1] = L.frame.box;
+  const wall = new THREE.Mesh(new THREE.PlaneGeometry((fx1 - fx0) * K, (fy1 - fy0) * K), new THREE.MeshBasicMaterial({ map: T.frame, transparent: true, alphaTest: 0.5 }));
+  wall.position.set(((fx0 + fx1) / 2) * K, -((fy0 + fy1) / 2) * K, 0); wall.renderOrder = 40; world.add(wall);
+  // invisible occluder: in mixed reality it hides the painting everywhere except through the window
+  const occ = new THREE.Mesh(new THREE.RingGeometry(RW * 0.996, 40, 128), new THREE.MeshBasicMaterial({ colorWrite: false }));
+  occ.position.z = -0.002; occ.renderOrder = -1; world.add(occ);
+  const tun = new THREE.CylinderGeometry(RW * 0.99, RW * 0.99, 0.09, 96, 1, true); tun.rotateX(Math.PI / 2); tun.translate(0, 0, -0.045);
+  const cols = []; const tp = tun.attributes.position; const lit = new THREE.Color('#e9cf9f'), shade = new THREE.Color('#6b5a55');
+  for (let i = 0; i < tp.count; i++) { const a = Math.atan2(tp.getY(i), tp.getX(i)); const l = 0.5 + 0.5 * Math.cos(a - 2.3); const c = shade.clone().lerp(lit, l); cols.push(c.r, c.g, c.b); }
+  tun.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+  const tunnel = new THREE.Mesh(tun, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide })); tunnel.renderOrder = 39; world.add(tunnel);
+  objs.wall = wall; objs.occ = occ; objs.tunnel = tunnel;
+
+  /* --- hotspots --- */
+  const INFO = {
+    swan: { obj: 'swan', at: [-585, 205], tag: 'Bird', title: 'Mute Swan', sci: 'Cygnus olor', text: 'The elegant white swans along the Lech River are almost always Mute Swans. Despite their name, they aren’t silent: their wings produce a distinctive rhythmic whooshing sound in flight that can be heard from surprisingly far away, even before the birds come into view.' },
+    blackbird: { obj: 'blackbird', at: [330, 350], tag: 'Songbird', title: 'Eurasian Blackbird', sci: 'Turdus merula', text: 'One of the most familiar songbirds in Augsburg’s parks and riverbanks. Only the males are jet black with a bright orange-yellow beak; females are brown. Its rich, fluting song is often the first you hear at dawn and the last at dusk.' },
+    bee: { obj: 'bee', at: [738, -168], tag: 'Pollinator', title: 'Red Mason Bee', sci: 'Osmia bicornis', text: 'Unlike honey bees, the Red Mason Bee lives alone. Each female builds her own nest, carefully sealing every chamber with mud and leaving behind just enough pollen for her offspring. Despite its solitary lifestyle, it is one of Europe’s most efficient pollinators, often outperforming honey bees in spring orchards.' },
+    loosestrife: { obj: 'bank_left', at: [-1053, -120], tag: 'Riverbank plant', title: 'Purple Loosestrife', sci: 'Lythrum salicaria', text: 'Tall magenta flower spikes that line wet riverbanks from early summer into autumn. Native to Europe, it is a rich source of nectar, visited by bees, butterflies and hoverflies, and its roots help hold the soft banks of the river together.' },
+    rathaus: { obj: 'city', at: [-814, -430], tag: 'Landmark', title: 'Augsburg Town Hall', sci: 'Rathaus · Elias Holl, 1615–1620', text: 'One of the most important Renaissance buildings north of the Alps. At 57 m it was the tallest building in Germany until 1917. The council wanted no towers; the city architect Elias Holl insisted on the two onion domes and got his way in 1618. The gable is crowned by a pine cone, the emblem of Augsburg.' },
+    perlach: { obj: 'city', at: [-392, -470], tag: 'Landmark', title: 'Perlach Tower', sci: 'Perlachturm', text: 'The slender 70 m tower beside the Town Hall began as a medieval watchtower. Elias Holl raised it to its present height in 1614–1616 and gave it the green onion dome, so the Town Hall’s bells could hang here while the new building went up.' },
+    weir: { obj: 'weir', at: [520, -70], tag: 'Water heritage', title: 'Hochablass Weir', sci: 'on the Lech, Augsburg', text: 'Since at least 1346 Augsburg has dammed the Lech here to send water into the city’s canals. A flood destroyed the old weir in 1910; it was rebuilt in 1911–1912. It also feeds the Eiskanal, the canoe slalom course of the 1972 Olympics, and is part of the Augsburg Water Management System, a UNESCO World Heritage site.' },
+  };
+  for (const [key, info] of Object.entries(INFO)) {
+    const o = objs[info.obj];
+    const b = document.createElement('button'); b.className = 'hotspot'; b.setAttribute('aria-label', `About the ${info.title}`);
+    $('hotspots').appendChild(b);
+    const local = d2w(info.at[0], info.at[1], o.userData.depth).sub(o.userData.base);
+    const h = { key, info, el: b, obj: o, local };
+    b.addEventListener('click', (e) => { e.stopPropagation(); openCard(h); });
+    b.addEventListener('mouseenter', () => { if (matchMedia('(hover: hover)').matches) openCard(h); });
+    hotspots.push(h);
+  }
+}
+
+/* ---------- wind: one gust curve drives both the swaying plants and the wind you hear ---------- */
+const gust = (t) => Math.min(1, Math.max(0, 0.45 + 0.28 * Math.sin(t * 0.21) + 0.18 * Math.sin(t * 0.53 + 1.3) + 0.09 * Math.sin(t * 1.37 + 0.4)));
+const sway = { uTime: { value: 0 }, uGust: { value: 0.5 } };
+
+/* ---------- sound: real recordings (river, weir, blackbird) and soft wind, off until the visitor asks ---------- */
+const audio = { on: false, ctx: null, master: null, bird: [], ready: null, wind: null, leaves: null };
+async function loadBuf(url) { const r = await fetch(url); const ab = await r.arrayBuffer(); return new Promise((res, rej) => audio.ctx.decodeAudioData(ab, res, rej)); }   // callback form also works on older iPhones
+function loopSrc(buf, gain, dest) {
+  const src = audio.ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+  src.loopStart = 0.06; src.loopEnd = buf.duration - 0.06;            // skip the mp3 padding so the loop is seamless
+  const g = audio.ctx.createGain(); g.gain.value = gain; src.connect(g).connect(dest); src.start(0, 0.06); return g;
+}
+function audioInit() {
+  if (audio.ctx) return audio.ready;
+  const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return Promise.resolve();
+  const ctx = new AC(); audio.ctx = ctx; audio.master = ctx.createGain(); audio.master.gain.value = 0; audio.master.connect(ctx.destination);
+  // wind: brown-ish noise through a moving band-pass, plus a faint leafy rustle
+  const len = ctx.sampleRate * 3, nb = ctx.createBuffer(1, len, ctx.sampleRate), d = nb.getChannelData(0);
+  let last = 0; for (let i = 0; i < len; i++) { last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02; d[i] = last * 3.5; }
+  const wn = ctx.createBufferSource(); wn.buffer = nb; wn.loop = true;
+  const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 420; bp.Q.value = 0.7;
+  audio.wind = ctx.createGain(); audio.wind.gain.value = 0; wn.connect(bp).connect(audio.wind).connect(audio.master); audio.windBP = bp;
+  const wb = ctx.createBuffer(1, len, ctx.sampleRate), wd = wb.getChannelData(0); for (let i = 0; i < len; i++) wd[i] = Math.random() * 2 - 1;
+  const ln = ctx.createBufferSource(); ln.buffer = wb; ln.loop = true;
+  const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 3800;
+  audio.leaves = ctx.createGain(); audio.leaves.gain.value = 0; ln.connect(hp).connect(audio.leaves).connect(audio.master);
+  wn.start(); ln.start();
+  audio.ready = (async () => {
+    const [river, weir, ...birds] = await Promise.all(['audio/river_loop.mp3', 'audio/weir_loop.mp3', 'audio/blackbird_1.mp3', 'audio/blackbird_2.mp3', 'audio/blackbird_3.mp3', 'audio/blackbird_4.mp3'].map(loadBuf));
+    loopSrc(river, 0.55, audio.master);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2200; lp.connect(audio.master);   // the weir is across the river
+    loopSrc(weir, 0.32, lp);
+    audio.bird = birds;
+  })().catch((e) => { console.error(e); toast('Some sounds could not be loaded.'); });
+  return audio.ready;
+}
+function playBird(i) {
+  const buf = audio.bird[i]; if (!buf) return;
+  const src = audio.ctx.createBufferSource(); src.buffer = buf; const g = audio.ctx.createGain(); g.gain.value = 0.9;
+  src.connect(g).connect(audio.master); src.start();
+}
+function updateWindSound(t) {
+  if (!audio.on || !audio.wind) return; const g = gust(t), now = audio.ctx.currentTime;
+  audio.wind.gain.setTargetAtTime(0.05 + g * g * 0.5, now, 0.4);
+  audio.leaves.gain.setTargetAtTime(g * g * 0.022, now, 0.4);
+  audio.windBP.frequency.setTargetAtTime(300 + g * 380, now, 0.6);
+}
+/* phones: everything that starts audio must happen inside the tap itself */
+function unlockAudio() {
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}   // iPhone: play even when the silent switch is on
+  if (!audio.el) { const el = new Audio('audio/silence.mp3'); el.loop = true; el.setAttribute('playsinline', ''); audio.el = el; }
+  audio.el.play().catch(() => {});                                    // an <audio> element puts iOS into "media playback" mode
+  try { const b = audio.ctx.createBuffer(1, 1, 22050), src = audio.ctx.createBufferSource(); src.buffer = b; src.connect(audio.ctx.destination); src.start(0); } catch (e) {}
+  if (audio.ctx.state !== 'running') audio.ctx.resume().catch(() => {});
+}
+const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+let iosHint = false;
+async function setSound(on) {
+  audio.on = on;
+  $('soundLbl').textContent = on ? 'Sound on' : 'Sound off'; $('soundBtn').setAttribute('aria-pressed', String(on)); $('credits').hidden = !on;
+  if (on) {
+    audioInit(); if (!audio.ctx) { toast('Sound is not supported in this browser.'); return; }
+    unlockAudio();
+    if (isIOS && !iosHint) { iosHint = true; toast('Can’t hear it? Turn up the volume and check the silent switch.', 3800); }
+    await audio.ready;
+  } else if (audio.el) audio.el.pause();
+  if (!audio.ctx) return;
+  audio.master.gain.setTargetAtTime(on ? 1 : 0, audio.ctx.currentTime, 0.25);
+  if (on && audio.ctx.state !== 'running') toast('Tap “Sound” once more to start the audio.', 3200);
+  if (on && objs.blackbird && objs.blackbird.userData.sing) setTimeout(() => objs.blackbird.userData.sing(), 600);
+}
+// phones suspend audio in the background or after a call: wake it on return or on the next touch
+document.addEventListener('visibilitychange', () => { if (!document.hidden && audio.on && audio.ctx) { audio.ctx.resume().catch(() => {}); if (audio.el) audio.el.play().catch(() => {}); } });
+addEventListener('pointerdown', () => { if (audio.on && audio.ctx && audio.ctx.state !== 'running') unlockAudio(); }, true);
+$('soundBtn').addEventListener('click', () => setSound(!audio.on));
+function showCredits(on) { $('creditsPop').hidden = !on; $('creditsBtn').setAttribute('aria-expanded', String(on)); }
+$('creditsBtn').addEventListener('click', (e) => { e.stopPropagation(); showCredits($('creditsPop').hidden); });
+document.addEventListener('click', (e) => { if (!$('credits').contains(e.target)) showCredits(false); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') showCredits(false); });
+
+/* ---------- info card ---------- */
+let openH = null;
+function openCard(h) {
+  openH = h;
+  $('cardTag').textContent = h.info.tag; $('cardTitle').textContent = h.info.title; $('cardSci').textContent = h.info.sci; $('cardBody').textContent = h.info.text;
+  $('card').classList.add('show'); placeCard();
+}
+function closeCard() { $('card').classList.remove('show'); openH = null; }
+$('cardClose').addEventListener('click', closeCard);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeCard(); });
+renderer.domElement.addEventListener('pointerdown', () => closeCard());
+function placeCard() {
+  if (!openH || innerWidth <= 640) return;
+  const r = openH.el.getBoundingClientRect(), c = $('card'), w = c.offsetWidth, hgt = c.offsetHeight;
+  let x = r.left + r.width / 2 + 22, y = r.top - hgt / 2;
+  if (x + w > innerWidth - 12) x = r.left - w - 22;
+  y = Math.max(12, Math.min(innerHeight - hgt - 80, y));
+  c.style.left = `${x}px`; c.style.top = `${y}px`;
+}
+
+/* ---------- panorama through the window: turn the phone (or drag) and the scene turns behind the fixed window ---------- */
+// the painting reaches about 52° to each side, 50° up and 46° down from the design eye
+const LOOK_H = 52, LOOK_UP = 50, LOOK_DN = 46;
+const look = { on: false, yaw: 0, pitch: 0, gyroYaw: 0, gyroPitch: 0, dragYaw: 0, dragPitch: 0, q0: null, gyro: false };
+const _q = new THREE.Quaternion(), _q1 = new THREE.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5)), _qs = new THREE.Quaternion(), _e = new THREE.Euler(), _z = new THREE.Vector3(0, 0, 1), _qr = new THREE.Quaternion();
+function onOrientLook(e) {
+  if (!look.on || e.alpha == null || e.beta == null || e.gamma == null) return;
+  const D = Math.PI / 180, orient = ((screen.orientation && screen.orientation.angle) || window.orientation || 0) * D;
+  _e.set(e.beta * D, e.alpha * D, -e.gamma * D, 'YXZ');
+  _q.setFromEuler(_e).multiply(_q1).multiply(_qs.setFromAxisAngle(_z, -orient));     // phone orientation as a camera
+  if (!look.q0) look.q0 = _q.clone();
+  const rel = _q.clone().multiply(look.q0.clone().invert());                          // how far it has turned since we started
+  _e.setFromQuaternion(rel, 'YXZ'); look.gyroYaw = _e.y; look.gyroPitch = _e.x; look.gyro = true;
+}
+addEventListener('deviceorientation', onOrientLook);
+function lookLimits() {
+  // how far the scene may turn before the window would show past the painting's edge
+  const R = THREE.MathUtils.degToRad, win = Math.atan(RW / Math.max(0.3, eye.z)) + R(4);
+  return { y: Math.max(0, R(LOOK_H) - win), up: Math.max(0, R(LOOK_UP) - win), dn: Math.max(0, R(LOOK_DN) - win), win };
+}
+async function setLook(on) {
+  look.on = on; look.q0 = null; look.dragYaw = look.dragPitch = 0; look.gyroYaw = look.gyroPitch = 0;
+  $('lookBtn').setAttribute('aria-pressed', String(on));
+  $('lookLbl').textContent = on ? 'Panorama on' : 'Panorama'; $('lookLblS').textContent = on ? 'Pano on' : 'Pano';
+  gyroOn = false; target.x = target.y = 0;
+  if (on) {
+    let granted = true;
+    try { if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') granted = (await DeviceOrientationEvent.requestPermission()) === 'granted'; } catch (e) { granted = false; }
+    look.gyro = false;
+    setTimeout(() => {
+      if (!look.on) return;
+      if (look.gyro) toast('Turn your phone to look around through the window · drag works too');
+      else if (isTouch) toast(inFrame ? 'Drag to look around. (Turning the phone needs the standalone page – Claude’s viewer blocks motion sensors.)' : (granted ? 'Drag to look around.' : 'Motion was not allowed – drag to look around.'), 5200);
+      else toast('Drag to look around through the window');
+    }, 900);
+  }
+}
+$('lookBtn').addEventListener('click', () => setLook(!look.on));
+
+/* ---------- viewpoint: tilt, pointer, step closer ---------- */
+const eye = { x: 0, y: 0, z: DE }, target = { x: 0, y: 0, z: DE };
+const MAXOFF = 0.34;
+const GYRO_X = 0.55, GYRO_Y = 0.36;   // how far the eye can travel with phone tilt (metres)
+let gyroOn = false, base = null;
+function onOrient(e) {
+  if (look.on || e.beta == null || e.gamma == null) return;
+  const ang = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
+  let tx = e.gamma, ty = e.beta;                                // portrait
+  if (ang === 90) { tx = e.beta; ty = -e.gamma; } else if (ang === -90 || ang === 270) { tx = -e.beta; ty = e.gamma; } else if (ang === 180) { tx = -e.gamma; ty = -e.beta; }
+  if (!base) base = { x: tx, y: ty };
+  base.x += (tx - base.x) * 0.0025; base.y += (ty - base.y) * 0.0025;  // slowly re-centre to however the phone is held
+  // like a depth wallpaper: turn the phone to the left and the window shows more of the left side
+  const dx = Math.tanh((tx - base.x) / 16), dy = Math.tanh((ty - base.y) / 16);
+  target.x = -dx * GYRO_X; target.y = dy * GYRO_Y;
+}
+async function enableMotion() {
+  try {
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      const r = await DeviceOrientationEvent.requestPermission(); if (r !== 'granted') { toast('Motion was not allowed. Drag to look around instead.'); return; }
+    }
+    let got = false;
+    const probe = (e) => { if (e.beta != null) got = true; };
+    addEventListener('deviceorientation', probe);
+    addEventListener('deviceorientation', onOrient);
+    setTimeout(() => { removeEventListener('deviceorientation', probe);
+      if (got) { gyroOn = true; toast('Tilt your phone to look around the window'); return; }
+      removeEventListener('deviceorientation', onOrient);
+      toast(inFrame ? 'Tilt is blocked inside this viewer. Drag with your finger to look around – the standalone page supports tilt.' : 'No motion sensor found. Drag with your finger to look around.', 5200);
+    }, 1200);
+  } catch (err) { toast('Motion is not available here. Drag to look around instead.', 3200); }
+}
+const isTouch = matchMedia('(pointer: coarse)').matches;
+let inFrame = false; try { inFrame = window.self !== window.top; } catch (e) { inFrame = true; }
+
+
+// pointer: mouse position on desktop, drag on touch (when tilt is off)
+let drag = null;
+renderer.domElement.addEventListener('pointermove', (e) => {
+  if (look.on) {
+    if (drag && pointers.size === 1) {
+      const L2 = lookLimits(), span = THREE.MathUtils.degToRad(camera.fov) * camera.aspect;
+      // the finger offset is kept within the painting so it never runs away past the edges
+      look.dragYaw = Math.max(-L2.y - look.gyroYaw, Math.min(L2.y - look.gyroYaw, drag.yaw + (e.clientX - drag.cx) / innerWidth * span));
+      look.dragPitch = Math.max(-L2.dn - look.gyroPitch, Math.min(L2.up - look.gyroPitch, drag.pitch + (e.clientY - drag.cy) / innerHeight * THREE.MathUtils.degToRad(camera.fov)));
+    }
+    return;
+  }
+  if (gyroOn) return;
+  if (e.pointerType === 'mouse') { target.x = ((e.clientX / innerWidth) * 2 - 1) * MAXOFF; target.y = -((e.clientY / innerHeight) * 2 - 1) * MAXOFF * 0.8; }
+  else if (drag && pointers.size === 1) { target.x = Math.max(-MAXOFF, Math.min(MAXOFF, drag.x + (e.clientX - drag.cx) / innerWidth * 0.6)); target.y = Math.max(-MAXOFF, Math.min(MAXOFF, drag.y - (e.clientY - drag.cy) / innerHeight * 0.6)); }
+});
+const pointers = new Map(); let pinch0 = null;
+renderer.domElement.addEventListener('pointerdown', (e) => { pointers.set(e.pointerId, e); if (e.pointerType !== 'mouse' || look.on) drag = { cx: e.clientX, cy: e.clientY, x: target.x, y: target.y, yaw: look.dragYaw, pitch: look.dragPitch }; if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch0 = { d: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY), z: target.z, lz: look.zoom }; } });
+renderer.domElement.addEventListener('pointermove', (e) => { if (!pointers.has(e.pointerId)) return; pointers.set(e.pointerId, e); if (pointers.size === 2 && pinch0) { const [a, b] = [...pointers.values()]; const d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY); setZ(pinch0.z - (d - pinch0.d) / 400); } });
+const up = (e) => { pointers.delete(e.pointerId); if (pointers.size < 2) pinch0 = null; if (!pointers.size) drag = null; };
+renderer.domElement.addEventListener('pointerup', up); renderer.domElement.addEventListener('pointercancel', up);
+renderer.domElement.addEventListener('wheel', (e) => { e.preventDefault(); setZ(target.z + e.deltaY * 0.0012); }, { passive: false });
+function updZoomBtns() {
+  $('zoomInBtn').disabled = target.z <= EYE_NEAR + 1e-3; $('zoomOutBtn').disabled = target.z >= DE - 1e-3;
+}
+function setZ(z) { target.z = Math.max(EYE_NEAR, Math.min(DE, z)); updZoomBtns(); }
+const ZSTEP = (DE - EYE_NEAR) / 3;     // three steps from the starting view to the closest look
+$('zoomInBtn').addEventListener('click', () => setZ(target.z - ZSTEP));
+$('zoomOutBtn').addEventListener('click', () => setZ(target.z + ZSTEP));
+setZ(DE);
+$('resetBtn').addEventListener('click', () => { target.x = target.y = 0; setZ(DE); base = null; look.q0 = null; look.dragYaw = look.dragPitch = 0; look.gyroYaw = look.gyroPitch = 0; });
+
+/* ---------- fit the window to any screen (portrait phones, tablets, wide desktops) ---------- */
+function layout() {
+  const w = innerWidth, h = innerHeight; renderer.setSize(w, h); camera.aspect = w / h;
+  const aspect = w / h, margin = aspect < 1 ? 1.06 : 1.16;
+  const tanV = (RW * margin) / DE / Math.min(aspect, 1);
+  camera.fov = THREE.MathUtils.radToDeg(2 * Math.atan(tanV)); camera.updateProjectionMatrix(); placeCard();
+}
+addEventListener('resize', layout); layout();
+
+/* ---------- headset: VR, or mixed reality with the window placed in your room ---------- */
+async function setupXR() {
+  if (!navigator.xr) return;
+  let mode = null;
+  try { if (await navigator.xr.isSessionSupported('immersive-ar')) mode = 'immersive-ar'; else if (await navigator.xr.isSessionSupported('immersive-vr')) mode = 'immersive-vr'; } catch (e) { return; }
+  if (!mode) return;
+  renderer.xr.enabled = true;
+  $('xrBtn').hidden = false; $('xrLbl').textContent = mode === 'immersive-ar' ? 'Open in your room' : 'View in VR';
+  $('xrBtn').addEventListener('click', async () => {
+    const session = await navigator.xr.requestSession(mode, { optionalFeatures: ['local-floor'] });
+    renderer.xr.setReferenceSpaceType('local-floor');
+    await renderer.xr.setSession(session);
+    if (mode === 'immersive-ar') renderer.setClearAlpha(0);
+    world.position.set(0, 1.45, -1.3);   // the window floats at eye height, a step in front of you
+    rig.position.set(0, 0, 0); camera.position.set(0, 0, 0);
+    session.addEventListener('end', () => { world.position.set(0, 0, 0); renderer.setClearAlpha(1); layout(); });
+  });
+}
+
+/* ---------- loop ---------- */
+const clock = new THREE.Clock(); const tmp = new THREE.Vector3(), tmp2 = new THREE.Vector3(), tmp3 = new THREE.Vector3();
+let winPx = 1;
+renderer.setAnimationLoop(() => {
+  const t = clock.getElapsedTime();
+  if (!renderer.xr.isPresenting) {
+    if (look.on) {
+      const lim = lookLimits();
+      const ty = Math.max(-lim.y, Math.min(lim.y, look.gyroYaw + look.dragYaw)), tp = Math.max(-lim.dn, Math.min(lim.up, look.gyroPitch + look.dragPitch));
+      look.yaw += (ty - look.yaw) * 0.2; look.pitch += (tp - look.pitch) * 0.2;
+      // a small lean in the turning direction adds depth between the layers
+      target.x = Math.sin(look.yaw) * -0.22; target.y = Math.sin(look.pitch) * 0.16;
+    } else { look.yaw *= 0.85; look.pitch *= 0.85; }
+    _e.set(look.pitch, look.yaw, 0, 'YXZ'); _qr.setFromEuler(_e).invert(); pano.quaternion.copy(_qr);
+    {
+      const a = gyroOn ? 0.12 : 0.08;
+      eye.x += (target.x - eye.x) * a; eye.y += (target.y - eye.y) * a; eye.z += (target.z - eye.z) * a;
+      camera.position.set(eye.x, eye.y, eye.z); camera.lookAt(0, 0, 0);
+    }
+  }
+  for (const f of anim) f(t);
+  tmp3.set(RW, 0, 0); world.localToWorld(tmp3); tmp3.project(camera); tmp2.set(0, 0, 0); world.localToWorld(tmp2); tmp2.project(camera); winPx = Math.abs(tmp3.x - tmp2.x) * innerWidth / 2;
+  for (const h of hotspots) {
+    tmp.copy(h.local).add(h.obj.position); h.obj.parent.localToWorld(tmp); tmp.project(camera);
+    tmp2.set(0, 0, 0); world.localToWorld(tmp2); tmp2.project(camera);
+    const ex = (tmp.x - tmp2.x) * innerWidth / 2, ey = (tmp.y - tmp2.y) * innerHeight / 2;
+    const vis = tmp.z < 1 && Math.abs(tmp.x) < 1.05 && Math.abs(tmp.y) < 1.05 && Math.hypot(ex, ey) < winPx * 0.97 && !renderer.xr.isPresenting;
+    h.el.style.display = vis ? '' : 'none';
+    h.el.style.left = `${(tmp.x * 0.5 + 0.5) * innerWidth}px`; h.el.style.top = `${(-tmp.y * 0.5 + 0.5) * innerHeight}px`;
+  }
+  if (openH) placeCard();
+  renderer.render(scene, camera);
+});
+
+build().then(() => { $('loader').classList.add('done'); setupXR(); if (isTouch) setTimeout(() => toast('Tap “Pano” and turn your phone to look around through the window', 3800), 900); }).catch((e) => { console.error(e); $('loader').querySelector('p').textContent = 'The scene could not be loaded. Please reload the page.'; });
+</script>
