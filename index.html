@@ -1,4 +1,4 @@
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Riverside Nature</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,7 +11,8 @@
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-html, body { height: 100%; }
+html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+button { touch-action: manipulation; }
 body { margin: 0; overflow: hidden; background: var(--wall); color: var(--cream); font: 15px/1.45 Nunito, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-tap-highlight-color: transparent; }
 #stage { position: fixed; inset: 0; }
 #stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
@@ -670,6 +671,9 @@ renderer.domElement.addEventListener('pointermove', (e) => {
   if (e.pointerType === 'mouse') { target.x = ((e.clientX / innerWidth) * 2 - 1) * MAXOFF; target.y = -((e.clientY / innerHeight) * 2 - 1) * MAXOFF * 0.8; }
   else if (drag && pointers.size === 1) { target.x = Math.max(-MAXOFF, Math.min(MAXOFF, drag.x + (e.clientX - drag.cx) / innerWidth * 0.6)); target.y = Math.max(-MAXOFF, Math.min(MAXOFF, drag.y - (e.clientY - drag.cy) / innerHeight * 0.6)); }
 });
+for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
+document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
+document.addEventListener('touchmove', (e) => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
 const pointers = new Map(); let pinch0 = null;
 renderer.domElement.addEventListener('pointerdown', (e) => { pointers.set(e.pointerId, e); if (e.pointerType !== 'mouse' || look.on) drag = { cx: e.clientX, cy: e.clientY, x: target.x, y: target.y, yaw: look.dragYaw, pitch: look.dragPitch }; if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch0 = { d: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY), z: target.z, lz: look.zoom }; } });
 renderer.domElement.addEventListener('pointermove', (e) => { if (!pointers.has(e.pointerId)) return; pointers.set(e.pointerId, e); if (pointers.size === 2 && pinch0) { const [a, b] = [...pointers.values()]; const d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY); setZ(pinch0.z - (d - pinch0.d) / 400); } });
@@ -709,7 +713,7 @@ async function setupXR() {
     await renderer.xr.setSession(session);
     if (mode === 'immersive-ar') renderer.setClearAlpha(0);
     world.position.set(0, 1.45, -1.3);   // the window floats at eye height, a step in front of you
-    rig.position.set(0, 0, 0); camera.position.set(0, 0, 0);
+    rig.position.set(0, 0, 0); camera.position.set(0, 0, 0); camera.clearViewOffset();
     session.addEventListener('end', () => { world.position.set(0, 0, 0); renderer.setClearAlpha(1); layout(); });
   });
 }
@@ -733,7 +737,12 @@ renderer.setAnimationLoop(() => {
     {
       const a = gyroOn ? 0.12 : 0.08;
       eye.x += (target.x - eye.x) * a; eye.y += (target.y - eye.y) * a; eye.z += (target.z - eye.z) * a;
-      camera.position.set(eye.x, eye.y, eye.z); camera.lookAt(0, 0, 0);
+      camera.position.set(eye.x, eye.y, eye.z); camera.quaternion.identity();
+      // off-axis view, like looking through a real window: the camera stays square to the wall and the view is
+      // shifted so the window's centre always lands in the middle of the screen, whatever the lean or the zoom
+      const tv = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2), th = tv * camera.aspect, W = innerWidth, H = innerHeight;
+      const ez = Math.max(0.05, eye.z), nx = -eye.x / ez / th, ny = -eye.y / ez / tv;
+      camera.setViewOffset(W, H, nx * W / 2, -ny * H / 2, W, H);
     }
   }
   for (const f of anim) f(t);
