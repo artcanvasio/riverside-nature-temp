@@ -590,9 +590,14 @@ function onOrientLook(e) {
 }
 addEventListener('deviceorientation', onOrientLook);
 function lookLimits() {
-  // how far the scene may turn before the window would show past the painting's edge
-  const R = THREE.MathUtils.degToRad, win = Math.atan(RW / Math.max(0.3, eye.z)) + R(4);
-  return { y: Math.max(0, R(LOOK_H) - win), up: Math.max(0, R(LOOK_UP) - win), dn: Math.max(0, R(LOOK_DN) - win), win };
+  // how far the scene may turn before the painting's edge would come into view. What you can see is whichever is
+  // narrower: the window opening or the screen itself. After zooming in, the window is bigger than a phone screen,
+  // so the screen sets the limit and there is much more room to turn toward the sides.
+  const R = THREE.MathUtils.degToRad, margin = R(4);
+  const win = Math.atan(RW / Math.max(0.3, eye.z));
+  const scrV = R(camera.fov) / 2, scrH = Math.atan(Math.tan(scrV) * camera.aspect);
+  const h = Math.min(win, scrH), v = Math.min(win, scrV);
+  return { y: Math.max(0, R(LOOK_H) - h - margin), up: Math.max(0, R(LOOK_UP) - v - margin), dn: Math.max(0, R(LOOK_DN) - v - margin), win };
 }
 async function setLook(on) {
   look.on = on; look.q0 = null; look.dragYaw = look.dragPitch = 0; look.gyroYaw = look.gyroPitch = 0;
@@ -722,6 +727,8 @@ renderer.setAnimationLoop(() => {
       // a small lean in the turning direction adds depth between the layers
       target.x = Math.sin(look.yaw) * -0.22; target.y = Math.sin(look.pitch) * 0.16;
     } else { look.yaw *= 0.85; look.pitch *= 0.85; }
+    // turn the landscape around where you actually stand (after zooming in that is closer to the window)
+    pano.position.set(0, 0, eye.z); land.position.set(0, 0, -eye.z);
     _e.set(look.pitch, look.yaw, 0, 'YXZ'); _qr.setFromEuler(_e).invert(); pano.quaternion.copy(_qr);
     {
       const a = gyroOn ? 0.12 : 0.08;
