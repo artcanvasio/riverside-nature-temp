@@ -1,4 +1,4 @@
-/* Watermarks XR — overlay: the Augustus Fountain, all in grey stone.
+/* Watermarks XR — overlay: the Augustus Fountain, all in light stone.
    It turns slowly; the visitor can pause it and drag to look at it from any side.
    Textures follow the fountain as it turns (they are projected from three sides, so the model needs no texture coordinates). */
 import { THREE, GL, loadModel, loadTexture, environment, orbit, disposeTree, frame, asset } from './kit.js';
@@ -97,9 +97,9 @@ export async function open(stage, ctx) {
   scene.add(sun, rim, pivot);
 
   const shared = { uRootInv: { value: new THREE.Matrix4() }, uTime: { value: 0 } };
-  // matte grey stone, for the fountain and its figures alike (the 'Stone' look of the first fountain test)
-  const stone = material(shared, { map: stoneTex, color: 0xa4a4a0, tile: 1, roughness: 0.74, env: 0.55, crease: 1.1 });
-  const figure = material(shared, { map: stoneTex, color: 0xa4a4a0, tile: 1, roughness: 0.74, env: 0.55, crease: 1.1 });
+  // matte light stone, for the fountain and its figures alike (the 'Stone' look of the first fountain test, a little whiter)
+  const stone = material(shared, { map: stoneTex, color: 0xe2e0d8, tile: 1, roughness: 0.74, env: 0.55, crease: 1.1 });
+  const figure = material(shared, { map: stoneTex, color: 0xe2e0d8, tile: 1, roughness: 0.74, env: 0.55, crease: 1.1 });
   const water = material(shared, { color: 0x4f8790, roughness: 0.06, env: 1, tile: 1.4, bumpMap: ripples, bump: 0.03, flow: 0.04 });
   const partOf = (o) => {
     for (let p = o; p; p = p.parent) {
