@@ -1,0 +1,68 @@
+/* Watermarks XR · Digital overlays — the look of the app's Explore screen (app.css), and a bar that switches between the four overlays. */
+@font-face { font-family: "DM Sans"; src: url(fonts/dm-sans.woff2) format("woff2"); font-weight: 100 1000; font-style: normal; font-display: swap; }
+:root {
+  --brand: #51eccf;
+  --steel: #8fa6bc;
+  --disc: rgba(255, 255, 255, 0.1);
+  --ease: cubic-bezier(0.2, 0.75, 0.2, 1);
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --top: max(6px, var(--sat));
+  --barh: 58px; /* the overlay switch */
+  --barb: max(16px, calc(var(--sab) + 8px)); /* … and its distance from the bottom edge */
+  --ctlb: calc(var(--barb) + var(--barh) + 14px); /* the overlay's own buttons sit above it */
+}
+* { box-sizing: border-box; margin: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: #000; color: #fff; overflow: hidden; overscroll-behavior: none; }
+body { font: 300 14px/1.5 "DM Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; touch-action: manipulation; }
+button:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; border-radius: 12px; }
+.caps { font-size: 11px; font-weight: 500; letter-spacing: 0.22em; text-transform: uppercase; }
+.nojs { position: fixed; inset: auto 24px 45%; text-align: center; color: var(--steel); }
+
+.xp { position: fixed; inset: 0; }
+.xp-stage { position: absolute; inset: 0; background: radial-gradient(64% 36% at 50% 45%, rgba(77, 200, 255, 0.17), rgba(77, 200, 255, 0.05) 52%, rgba(77, 200, 255, 0) 80%); }
+.xp-stage canvas { display: block; width: 100%; height: 100%; animation: fadein 0.7s both; }
+.xp.immersive .xp-stage { background: #000; }
+.xp.immersive .xp-stage::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0) 19%, rgba(0, 0, 0, 0) 62%, rgba(0, 0, 0, 0.7)); }
+.xp-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #000; }
+
+.xp-tt { position: absolute; z-index: 3; left: 24px; right: 24px; top: calc(var(--top) + 15px); text-align: center; pointer-events: none; }
+.xp-tt .caps { display: block; color: rgba(255, 255, 255, 0.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.xp-cap { display: block; margin-top: 5px; min-height: 14px; font-size: 11px; color: var(--steel); }
+.xp.immersive .xp-cap { color: rgba(255, 255, 255, 0.8); }
+
+/* the overlay's own controls: round buttons, as in the app */
+.xp-ctl { position: absolute; z-index: 3; left: 0; right: 0; bottom: var(--ctlb); display: flex; justify-content: center; gap: 4px; pointer-events: none; }
+.xp-ctl:empty { display: none; }
+.cbtn { pointer-events: auto; width: 84px; display: grid; justify-items: center; gap: 8px; font-size: 11px; font-weight: 400; animation: ctlin 0.5s var(--ease) both; }
+.cbtn .disc { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: var(--disc); transition: background 0.2s, color 0.2s, transform 0.15s; }
+.xp.immersive .cbtn .disc { background: rgba(0, 0, 0, 0.42); }
+.cbtn:active .disc { transform: scale(0.93); }
+.cbtn[aria-pressed='true'] .disc, .xp.immersive .cbtn[aria-pressed='true'] .disc { background: var(--brand); color: #000; }
+.cbtn em { font-style: normal; }
+
+/* the switch between the four overlays */
+.switch { position: absolute; z-index: 4; left: 50%; bottom: var(--barb); transform: translateX(-50%); height: var(--barh); width: min(calc(100% - 24px), 460px);
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 5px; border-radius: 29px; background: rgba(20, 26, 31, 0.86);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+.switch button { border-radius: 24px; display: grid; justify-items: center; align-content: center; gap: 2px; font-size: 10.5px; font-weight: 400; color: rgba(255, 255, 255, 0.78); transition: background 0.2s, color 0.2s; }
+.switch button svg { width: 20px; height: 20px; }
+.switch button[aria-current='true'] { background: var(--brand); color: #000; font-weight: 500; }
+.switch button:active { transform: scale(0.96); }
+
+.xp-load { position: absolute; z-index: 2; inset: 0; display: grid; place-content: center; justify-items: center; gap: 18px; padding: 0 24px; text-align: center; }
+.xp-load[hidden] { display: none; }
+.xp-load .ring { transform: rotate(-90deg); overflow: visible; }
+.xp-load circle { fill: none; stroke: rgba(255, 255, 255, 0.16); stroke-width: 1.5; }
+.xp-load #xring { stroke: var(--brand); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 176; stroke-dashoffset: 176; transition: stroke-dashoffset 0.3s; }
+.xp-load.err .ring { display: none; }
+.xp-load .again { height: 48px; padding: 0 22px; border-radius: 4px; background: rgba(255, 255, 255, 0.08); font-weight: 500; }
+.xp-hint { position: absolute; z-index: 3; left: 0; right: 0; bottom: calc(var(--ctlb) + 86px); text-align: center; font-size: 13px; color: rgba(255, 255, 255, 0.8);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6); pointer-events: none; animation: hint 4.2s both; }
+
+@keyframes fadein { from { opacity: 0; } }
+@keyframes ctlin { from { opacity: 0; transform: translateY(12px); } }
+@keyframes hint { 0% { opacity: 0; } 10%, 82% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
+@media (max-width: 359px) { .cbtn { width: 72px; } .switch button { font-size: 9.5px; } }
