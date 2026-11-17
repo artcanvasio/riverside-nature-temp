@@ -99,8 +99,9 @@ function govern(dt) {
   const avg = meter.sum / meter.n;
   meter.n = 0;
   meter.sum = 0;
-  if (avg > 0.036 && quality > 0.55 && active) {
-    quality = Math.max(0.5, quality * 0.8);
+  // a fine model (the fountain) blurs too much below 0.7, so the drawing never drops further than that
+  if (avg > 0.04 && quality > 0.75 && active) {
+    quality = Math.max(0.7, quality * 0.85);
     meter.skip = 20;
     size(active);
   }

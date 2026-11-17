@@ -3,7 +3,7 @@
    Textures follow the fountain as it turns (they are projected from three sides, so the model needs no texture coordinates). */
 import { THREE, GL, loadModel, loadTexture, environment, orbit, disposeTree, frame, asset } from './kit.js';
 
-const MODEL = { path: 'models/fountain.glb', bytes: 1121124 };
+const MODEL = { path: 'models/fountain.glb', bytes: 1958236 };
 const TURN = 30; // seconds for one full turn
 const TARGET = new THREE.Vector3(0, 3.3, 0),
   FROM = new THREE.Vector3(15.5, 3.9, 15.5).normalize(),
@@ -98,7 +98,7 @@ export async function open(stage, ctx) {
 
   const shared = { uRootInv: { value: new THREE.Matrix4() }, uTime: { value: 0 } };
   const stone = material(shared, { map: marble, tile: 3, roughness: 0.13, env: 0.7, crease: 1.1 });
-  const bronze = material(shared, { color: 0x17181a, roughness: 0.42, metalness: 0.35, env: 2, crease: 0.4 });
+  const bronze = material(shared, { color: 0x4a3a28, roughness: 0.3, metalness: 0.9, env: 1.6, crease: 0.6 });
   const water = material(shared, { color: 0x4f8790, roughness: 0.06, env: 1, tile: 1.4, bumpMap: ripples, bump: 0.03, flow: 0.04 });
   const partOf = (o) => {
     for (let p = o; p; p = p.parent) {

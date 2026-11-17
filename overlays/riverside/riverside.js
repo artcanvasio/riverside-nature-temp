@@ -540,9 +540,16 @@ function lookLimits() {
 /* ---------- viewpoint: a small lean with the turn, and stepping closer ---------- */
 const eye = { x: 0, y: 0, z: DE }, target = { x: 0, y: 0, z: DE };
 
-// drag (finger or mouse) turns the scene too, on top of the phone's own turning
+// drag (finger or mouse) turns the scene too, on top of the phone's own turning.
+// With a mouse, simply moving it over the picture looks around the panorama: right edge = as far right as it goes, and so on.
 let drag = null;
 renderer.domElement.addEventListener('pointermove', (e) => {
+  if (e.pointerType === 'mouse' && !drag) {
+    const L2 = lookLimits(), nx = Math.max(-1, Math.min(1, (e.clientX / innerWidth) * 2 - 1)), ny = Math.max(-1, Math.min(1, (e.clientY / innerHeight) * 2 - 1));
+    look.dragYaw = -nx * L2.y;
+    look.dragPitch = ny < 0 ? -ny * L2.up : -ny * L2.dn;
+    return;
+  }
   if (!drag || pointers.size !== 1) return;
   const L2 = lookLimits(), span = THREE.MathUtils.degToRad(camera.fov) * camera.aspect;
   // the finger offset is kept within the painting so it never runs away past the edges

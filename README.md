@@ -3,7 +3,7 @@
 The four digital overlays of Watermarks XR on one page, with a switch between them:
 **Water Towers**, **Augustus Fountain**, **Ice Kanal** and **Riverside Nature**.
 
-Planned address: https://overlay.artcanvas.io · `#towers`, `#fountain`, `#kanal` and `#river` open one overlay directly.
+Address (GitHub Pages): https://artcanvasio.github.io/digital-overlay/ · `#towers`, `#fountain`, `#kanal` and `#river` open one overlay directly.
 
 Each overlay keeps only the controls it has in the phone app:
 
@@ -32,11 +32,13 @@ This repository's own files: `index.html`, `viewer.js` (the switch and the contr
 Any static server, for example `python3 -m http.server 8080`, then open http://localhost:8080/.
 Phones need https for the motion sensor.
 
-## Deploying (Coolify)
+## Publishing
 
-New resource → this repository, branch `main`, build pack **Dockerfile**, domain `https://overlay.artcanvas.io`.
-The DNS of artcanvas.io needs a record for `overlay` pointing at the same server as `watermarks`.
-The build compresses the files and checks `nginx.conf`; a mistake there stops the build, not the site.
+The site is published by **GitHub Pages** from the branch `main` (Settings › Pages › Deploy from a branch › `main` / root).
+Every push is live a minute later. Pages serves the files as they are; `index.html` carries its own security policy.
+
+`Dockerfile` and `nginx.conf` are only needed if the site should ever run on an own server instead (Coolify, build pack
+“Dockerfile”); they add stricter headers than Pages allows.
 
 ## Security
 
